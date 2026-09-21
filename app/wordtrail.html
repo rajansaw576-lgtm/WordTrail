@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WordTrail: Word Search Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#0B2027;
+    --bg-mid:#123138;
+    --bg-mid2:#16383F;
+    --gold:#E3B664;
+    --gold-dim:#B98F44;
+    --moss:#7FA99B;
+    --ink:#F3EFE4;
+    --ink-dim:#B9C6C2;
+    --found:#5A9E78;
+    --card:rgba(255,255,255,0.045);
+    --card-border:rgba(227,182,100,0.18);
+    --danger:#C8695A;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    box-sizing:border-box;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      /* Keep the explorer-night theme regardless of system scheme; it's the design's identity */
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 700px at 15% -10%, #1c4a4f 0%, transparent 60%),
+      radial-gradient(900px 600px at 110% 10%, #204b3f 0%, transparent 55%),
+      linear-gradient(180deg,var(--bg-deep),var(--bg-mid) 55%, var(--bg-mid2));
+    color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    min-height:100%;
+    overflow-x:hidden;
+    -webkit-tap-highlight-color:transparent;
+  }
+  h1,h2,h3,.serif{font-family:'Fraunces',Georgia,serif;}
+
+  .app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;position:relative;}
+
+  /* ---------- Top ad slot ---------- */
+  .ad-slot{
+    margin:env(safe-area-inset-top,0px) 12px 0 12px;
+    border:1px dashed rgba(243,239,228,0.25);
+    border-radius:10px;
+    background:rgba(255,255,255,0.03);
+    color:rgba(243,239,228,0.45);
+    font-size:11px;
+    letter-spacing:.04em;
+    text-align:center;
+    padding:8px 6px;
+    position:relative;
+  }
+  .ad-slot span.tag{
+    position:absolute;top:-9px;left:10px;background:var(--bg-deep);
+    padding:0 6px;font-size:9px;color:var(--gold-dim);
+  }
+
+  /* ---------- Screens ---------- */
+  .screen{flex:1;display:none;flex-direction:column;padding:18px 18px 28px;}
+  .screen.active{display:flex;}
+
+  /* Home */
+  .hero{padding:18px 2px 8px;}
+  .hero-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+  .sound-toggle{
+    width:38px;height:38px;border-radius:50%;flex-shrink:0;margin-top:2px;
+    background:var(--card);border:1px solid var(--card-border);color:var(--gold);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;
+  }
+  .sound-toggle svg{width:18px;height:18px;}
+  .hero .kicker{color:var(--gold);font-size:13px;letter-spacing:.05em;margin:0 0 6px;}
+  .hero h1{font-size:34px;line-height:1.05;margin:0 0 2px;color:var(--ink);font-weight:600;}
+  .hero .sub-line{margin:0 0 10px;font-size:13px;color:var(--gold);letter-spacing:.02em;}
+  .hero p{color:var(--ink-dim);font-size:14.5px;line-height:1.5;margin:0;max-width:34ch;}
+
+  .stat-row{display:flex;gap:10px;margin:20px 0 8px;}
+  .stat-pill{
+    flex:1;background:var(--card);border:1px solid var(--card-border);
+    border-radius:14px;padding:10px 12px;
+  }
+  .stat-pill .num{font-family:'Fraunces',serif;font-size:22px;color:var(--gold);display:block;}
+  .stat-pill .lbl{font-size:11px;color:var(--ink-dim);}
+
+  .cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;}
+  .cat-card{
+    background:var(--card);border:1px solid var(--card-border);
+    border-radius:18px;padding:16px 14px;text-align:left;
+    color:var(--ink);cursor:pointer;position:relative;overflow:hidden;
+    transition:transform .15s ease, border-color .15s ease;
+  }
+  .cat-card:active{transform:scale(0.97);}
+  .cat-card .icon{width:34px;height:34px;margin-bottom:10px;color:var(--gold);}
+  .cat-card h3{margin:0 0 2px;font-size:17px;font-weight:600;}
+  .cat-card .sub{font-size:12px;color:var(--ink-dim);}
+  .cat-card .prog{margin-top:10px;height:4px;border-radius:2px;background:rgba(255,255,255,0.08);overflow:hidden;}
+  .cat-card .prog i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-dim),var(--gold));}
+
+  /* Level select */
+  .backbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .backbtn{
+    width:36px;height:36px;border-radius:50%;border:1px solid var(--card-border);
+    background:var(--card);color:var(--ink);display:flex;align-items:center;justify-content:center;
+    cursor:pointer;flex-shrink:0;
+  }
+  .backbar h2{margin:0;font-size:20px;font-weight:600;}
+  .level-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:6px;}
+  .level-btn{
+    aspect-ratio:1;border-radius:14px;border:1px solid var(--card-border);
+    background:var(--card);color:var(--ink);font-family:'Fraunces',serif;font-size:18px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;
+  }
+  .level-btn.locked{color:var(--ink-dim);opacity:.5;cursor:not-allowed;}
+  .level-btn.done{border-color:var(--gold);color:var(--gold);}
+  .level-btn .star{position:absolute;bottom:5px;font-size:9px;color:var(--gold);}
+
+  /* Game screen */
+  .game-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .game-meta{display:flex;gap:14px;font-size:13px;color:var(--ink-dim);}
+  .game-meta b{color:var(--ink);font-family:'Fraunces',serif;font-size:15px;}
+  .hint-btn{
+    background:var(--card);border:1px solid var(--card-border);color:var(--gold);
+    border-radius:10px;padding:8px 12px;font-size:12.5px;cursor:pointer;font-weight:600;
+    display:flex;align-items:center;gap:6px;
+  }
+
+  .board-wrap{
+    background:var(--card);border:1px solid var(--card-border);
+    border-radius:18px;padding:12px;margin-bottom:14px;
+    touch-action:none;
+    user-select:none;
+  }
+  #grid{
+    display:grid;
+    gap:2px;
+    position:relative;
+  }
+  .cell{
+    aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces',serif;font-weight:600;
+    border-radius:6px;
+    background:transparent;
+    color:var(--ink);
+    font-size:15px;
+    transition:background .08s ease, color .08s ease;
+  }
+  .cell.sel{background:rgba(227,182,100,0.28);color:#fff;}
+  .cell.found{background:rgba(90,158,120,0.35);color:#EAF5EC;}
+  .cell.hint{background:rgba(227,182,100,0.5);}
+
+  .wordlist{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+  .word-chip{
+    padding:7px 12px;border-radius:20px;border:1px solid var(--card-border);
+    background:var(--card);font-size:13px;color:var(--ink-dim);letter-spacing:.02em;
+  }
+  .word-chip.found{
+    color:var(--found);border-color:rgba(90,158,120,0.5);
+    text-decoration:line-through;text-decoration-color:var(--found);
+  }
+
+  /* Modal (level complete / interstitial ad) */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(6,15,17,0.72);backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .modal-overlay.active{display:flex;}
+  .modal{
+    background:linear-gradient(180deg,var(--bg-mid2),var(--bg-deep));
+    border:1px solid var(--card-border);border-radius:20px;padding:24px 20px;max-width:380px;width:100%;
+    text-align:center;
+  }
+  .modal h2{margin:4px 0 6px;font-size:24px;color:var(--gold);}
+  .modal p{color:var(--ink-dim);font-size:13.5px;margin:0 0 16px;}
+  .modal .btn{
+    display:block;width:100%;padding:13px;border-radius:12px;border:none;
+    background:linear-gradient(180deg,#EDC578,var(--gold));color:#2A1C05;
+    font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;font-family:'Inter';
+  }
+  .modal .btn.ghost{background:transparent;border:1px solid var(--card-border);color:var(--ink);font-weight:600;}
+  .modal .stats-mini{display:flex;justify-content:center;gap:18px;margin:14px 0;}
+  .modal .stats-mini div{text-align:center;}
+  .modal .stats-mini b{display:block;font-family:'Fraunces',serif;font-size:20px;color:var(--ink);}
+  .modal .stats-mini span{font-size:11px;color:var(--ink-dim);}
+  .modal .interstitial-box{
+    border:1px dashed rgba(227,182,100,0.4);border-radius:12px;padding:22px 10px;
+    color:rgba(243,239,228,0.5);font-size:12px;margin-bottom:16px;position:relative;background:rgba(255,255,255,0.03);
+  }
+  .modal .interstitial-box span.tag{
+    position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--bg-deep);
+    padding:0 8px;font-size:9px;color:var(--gold-dim);letter-spacing:.05em;
+  }
+
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:#2A1C05;color:var(--gold);border:1px solid var(--gold-dim);
+    padding:11px 18px;border-radius:12px;font-size:13.5px;font-weight:600;
+    z-index:80;opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;
+    max-width:86%;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .reward-box{
+    border:1px dashed rgba(227,182,100,0.4);border-radius:12px;padding:26px 12px;
+    color:rgba(243,239,228,0.55);font-size:12px;margin-bottom:16px;position:relative;background:rgba(255,255,255,0.03);
+  }
+  .reward-box span.tag{
+    position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--bg-deep);
+    padding:0 8px;font-size:9px;color:var(--gold-dim);letter-spacing:.05em;
+  }
+  .reward-box .dots{display:inline-flex;gap:5px;margin-top:10px;}
+  .reward-box .dots i{width:6px;height:6px;border-radius:50%;background:var(--gold-dim);display:inline-block;animation:pulse 1s infinite ease-in-out;}
+  .reward-box .dots i:nth-child(2){animation-delay:.15s;}
+  .reward-box .dots i:nth-child(3){animation-delay:.3s;}
+  @keyframes pulse{0%,80%,100%{opacity:.3;}40%{opacity:1;}}
+
+  ::selection{background:rgba(227,182,100,0.3);}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <div class="ad-slot"><span class="tag">AD PLACEHOLDER — banner (320×50)</span>AdMob / Start.io banner mounts here in the native build</div>
+
+  <!-- HOME -->
+  <section class="screen active" id="screen-home">
+    <div class="hero">
+      <div class="hero-row">
+        <div>
+          <p class="kicker">Explorer's puzzle box</p>
+          <h1>WordTrail</h1>
+          <p class="sub-line">Word Search Explorer</p>
+        </div>
+        <button class="sound-toggle" id="btn-sound" aria-label="Toggle sound"></button>
+      </div>
+      <p>Pick a trail, sweep your finger across hidden words, and clear every board. Five worlds, 100 puzzles each.</p>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-pill"><span class="num" id="stat-solved">0</span><span class="lbl">boards cleared</span></div>
+      <div class="stat-pill"><span class="num" id="stat-score">0</span><span class="lbl">total score</span></div>
+      <div class="stat-pill"><span class="num" id="stat-streak">0</span><span class="lbl">best streak</span></div>
+    </div>
+
+    <div class="cat-grid" id="cat-grid"></div>
+  </section>
+
+  <!-- LEVEL SELECT -->
+  <section class="screen" id="screen-levels">
+    <div class="backbar">
+      <button class="backbtn" id="btn-back-home">&#8592;</button>
+      <h2 id="levels-title">Category</h2>
+    </div>
+    <div class="level-grid" id="level-grid"></div>
+  </section>
+
+  <!-- GAME -->
+  <section class="screen" id="screen-game">
+    <div class="backbar">
+      <button class="backbtn" id="btn-back-levels">&#8592;</button>
+      <h2 id="game-title">Board</h2>
+    </div>
+    <div class="game-top">
+      <div class="game-meta">
+        <div>⏱ <b id="meta-time">0:00</b></div>
+        <div>★ <b id="meta-score">0</b></div>
+      </div>
+      <button class="hint-btn" id="btn-hint">💡 Hint (watch ad)</button>
+    </div>
+
+    <div class="board-wrap"><div id="grid"></div></div>
+    <div class="wordlist" id="wordlist"></div>
+  </section>
+
+</div>
+
+<!-- Level complete / interstitial modal -->
+<div class="modal-overlay" id="modal-complete">
+  <div class="modal">
+    <div class="interstitial-box">
+      <span class="tag">AD PLACEHOLDER — interstitial</span>
+      Full-screen AdMob / Start.io interstitial shows here between boards in the native build
+    </div>
+    <h2 class="serif">Board cleared!</h2>
+    <p id="complete-sub">Nice trail work.</p>
+    <div class="stats-mini">
+      <div><b id="cm-time">0:00</b><span>time</span></div>
+      <div><b id="cm-score">0</b><span>score</span></div>
+    </div>
+    <button class="btn" id="btn-next">Continue</button>
+    <button class="btn ghost" id="btn-menu">Back to trails</button>
+  </div>
+</div>
+
+<!-- Rewarded ad for hint -->
+<div class="modal-overlay" id="modal-hint-ad">
+  <div class="modal">
+    <div class="reward-box" id="reward-box">
+      <span class="tag">AD PLACEHOLDER — rewarded</span>
+      AdMob / Start.io rewarded ad plays here
+      <div class="dots"><i></i><i></i><i></i></div>
+    </div>
+    <h2 class="serif">Watching ad…</h2>
+    <p>Ek hint ke liye ek ad — hint ad khatam hote hi mil jaayega.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- Data ---------------- */
+  var CATEGORIES = [
+    { id:"forest", name:"Forest Trail", sub:"Roots & canopy", icon:"leaf",
+      words:["OAK","FERN","MOSS","TRAIL","ACORN","BRANCH","THICKET","SUNLIGHT","MEADOW","CANOPY","HOLLOW","LICHEN","RIDGE","PINECONE","CLEARING","UNDERGROWTH","SAPLING","BURROW"] },
+    { id:"ocean", name:"Ocean Trail", sub:"Tide & current", icon:"wave",
+      words:["TIDE","REEF","KELP","WAVE","CORAL","ANCHOR","LAGOON","CURRENT","HORIZON","DRIFTWOOD","STARFISH","SHIPWRECK","TRENCH","PLANKTON","LIGHTHOUSE","ESTUARY","BARNACLE","UNDERTOW"] },
+    { id:"summit", name:"Summit Trail", sub:"Peak & stone", icon:"mountain",
+      words:["PEAK","CLIFF","STONE","GLACIER","SUMMIT","BOULDER","CREVASSE","ALTITUDE","AVALANCHE","SWITCHBACK","BASECAMP","RIDGELINE","OUTCROP","TREELINE","SCREE","CAIRN","PLATEAU","FOOTHILL"] },
+    { id:"night", name:"Night Trail", sub:"Stars & dusk", icon:"star",
+      words:["MOON","COMET","ORBIT","NEBULA","METEOR","ECLIPSE","STARDUST","TWILIGHT","LANTERN","CONSTELLATION","GALAXY","CRATER","ZENITH","AURORA","STARGAZER","MIDNIGHT","CAMPFIRE","OWLET"] },
+    { id:"market", name:"Market Trail", sub:"Harvest & spice", icon:"basket",
+      words:["HONEY","SPICE","GRAIN","MARKET","HARVEST","ORCHARD","VINEYARD","LANTERN","BASKET","SAFFRON","CINNAMON","MERCHANT","BAZAAR","PRESERVE","GRANARY","MILLSTONE","CIDER","PEPPERCORN"] }
+  ];
+  var LEVEL_COUNT = 100;
+  // Difficulty curve across 100 levels: 1-20 easy (flat), then a slow climb to hard by 100
+  function gridSizeForLevel(lvl){
+    if(lvl<=20) return 8;
+    if(lvl<=40) return 9;
+    if(lvl<=60) return 10;
+    if(lvl<=80) return 11;
+    if(lvl<=95) return 12;
+    return 13;
+  }
+  function wordsForLevel(lvl){
+    if(lvl<=20) return 5;
+    if(lvl<=40) return 6;
+    if(lvl<=60) return 6;
+    if(lvl<=80) return 7;
+    if(lvl<=95) return 7;
+    return 8;
+  }
+  var DIRS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]];
+
+  var ICONS = {
+    leaf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20C4 10 12 4 20 4c0 8-6 16-16 16Z"/><path d="M6 18C10 12 14 8 19 5"/></svg>',
+    wave:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 8c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M2 14c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M2 20c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/></svg>',
+    mountain:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 19 9 8l4 6 2-3 6 8Z"/><circle cx="7" cy="6" r="1.3" fill="currentColor" stroke="none"/></svg>',
+    star:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2"/><circle cx="12" cy="12" r="3.4"/></svg>',
+    basket:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 10h16l-2 9H6L4 10Z"/><path d="M8 10 9 4M16 10l-1-6M11 10V5M13 10V5"/></svg>'
+  };
+
+  /* ---------------- State ---------------- */
+  var state = { catId:null, level:null, size:0, words:[], grid:[], found:{}, startTime:0, timerId:null, score:0, selecting:false, selCells:[], hintPenalty:0 };
+  var progress = loadProgress();
+
+  function loadProgress(){
+    try{
+      var raw = localStorage.getItem("wordtrail_progress_v1");
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    var p = {};
+    CATEGORIES.forEach(function(c){ p[c.id] = { unlocked:1, stars:{}, }; });
+    p.totals = { solved:0, score:0, streak:0, bestStreak:0 };
+    p.soundOn = true;
+    return p;
+  }
+  function saveProgress(){
+    try{ localStorage.setItem("wordtrail_progress_v1", JSON.stringify(progress)); }catch(e){}
+  }
+  CATEGORIES.forEach(function(c){ if(!progress[c.id]) progress[c.id] = { unlocked:1, stars:{} }; });
+  if(!progress.totals) progress.totals = { solved:0, score:0, streak:0, bestStreak:0 };
+  if(typeof progress.soundOn !== "boolean") progress.soundOn = true;
+
+  /* ---------------- Sound (self-contained Web Audio synth, no external files) ---------------- */
+  var audioCtx = null;
+  function ensureAudio(){
+    if(audioCtx) return audioCtx;
+    try{
+      var AC = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AC();
+    }catch(e){ audioCtx = null; }
+    return audioCtx;
+  }
+  function tone(freq, start, dur, type, gainPeak){
+    if(!progress.soundOn) return;
+    var ctx = ensureAudio();
+    if(!ctx) return;
+    if(ctx.state === "suspended"){ ctx.resume(); }
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.value = freq;
+    var t0 = ctx.currentTime + start;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(gainPeak||0.12, t0+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t0); osc.stop(t0+dur+0.02);
+  }
+  function sfxDrag(){ tone(520, 0, 0.06, "sine", 0.05); }
+  function sfxFound(){ tone(660,0,0.12,"triangle",0.14); tone(880,0.08,0.16,"triangle",0.12); }
+  function sfxComplete(){ tone(520,0,0.14,"triangle",0.13); tone(660,0.12,0.14,"triangle",0.13); tone(880,0.24,0.22,"triangle",0.14); }
+  function sfxHint(){ tone(440,0,0.1,"sine",0.1); }
+  function sfxClick(){ tone(300,0,0.05,"sine",0.06); }
+
+  function updateSoundIcon(){
+    var btn = document.getElementById("btn-sound");
+    btn.innerHTML = progress.soundOn
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 8a5 5 0 0 1 0 8"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 9l5 6M21 9l-5 6"/></svg>';
+  }
+  document.getElementById("btn-sound").addEventListener("click", function(){
+    progress.soundOn = !progress.soundOn;
+    saveProgress();
+    updateSoundIcon();
+    if(progress.soundOn){ ensureAudio(); sfxClick(); }
+  });
+
+  /* ---------------- Screens ---------------- */
+  function show(id){
+    document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("active"); });
+    document.getElementById(id).classList.add("active");
+  }
+
+  function renderHome(){
+    document.getElementById("stat-solved").textContent = progress.totals.solved;
+    document.getElementById("stat-score").textContent = progress.totals.score;
+    document.getElementById("stat-streak").textContent = progress.totals.bestStreak;
+
+    var grid = document.getElementById("cat-grid");
+    grid.innerHTML = "";
+    CATEGORIES.forEach(function(c){
+      var done = Object.keys(progress[c.id].stars).length;
+      var pct = Math.round(done / LEVEL_COUNT * 100);
+      var card = document.createElement("button");
+      card.className = "cat-card";
+      card.innerHTML =
+        '<div class="icon">'+ICONS[c.icon]+'</div>'+
+        '<h3>'+c.name+'</h3>'+
+        '<div class="sub">'+c.sub+' · '+done+'/'+LEVEL_COUNT+'</div>'+
+        '<div class="prog"><i style="width:'+pct+'%"></i></div>';
+      card.addEventListener("click", function(){ sfxClick(); openLevels(c.id); });
+      grid.appendChild(card);
+    });
+  }
+
+  function openLevels(catId){
+    state.catId = catId;
+    var cat = CATEGORIES.find(function(c){ return c.id===catId; });
+    document.getElementById("levels-title").textContent = cat.name;
+    var lg = document.getElementById("level-grid");
+    lg.innerHTML = "";
+    var unlocked = progress[catId].unlocked;
+    for(var i=1;i<=LEVEL_COUNT;i++){
+      var btn = document.createElement("button");
+      var isLocked = i>unlocked;
+      var isDone = !!progress[catId].stars[i];
+      btn.className = "level-btn"+(isLocked?" locked":"")+(isDone?" done":"");
+      btn.innerHTML = i + (isDone?'<span class="star">★</span>':'');
+      btn.disabled = isLocked;
+      (function(lvl){
+        btn.addEventListener("click", function(){ sfxClick(); startLevel(catId, lvl); });
+      })(i);
+      lg.appendChild(btn);
+    }
+    show("screen-levels");
+  }
+
+  /* ---------------- Game generation ---------------- */
+  function pickWords(cat, level, size){
+    var count = wordsForLevel(level);
+    var pool = cat.words.slice();
+    // deterministic-ish shuffle seeded by level so replays feel consistent but varied enough
+    var seed = level*17 + cat.id.length*3;
+    for(var i=pool.length-1;i>0;i--){
+      seed = (seed*9301+49297)%233280;
+      var j = Math.floor((seed/233280)*(i+1));
+      var t=pool[i]; pool[i]=pool[j]; pool[j]=t;
+    }
+    // keep the board's difficulty matching its size: prefer words that fit
+    // comfortably, only reaching for longer ones if the short pool runs out
+    var maxLen = size - 1;
+    var short = pool.filter(function(w){ return w.length<=maxLen; });
+    var long = pool.filter(function(w){ return w.length>maxLen; });
+    var chosen = short.concat(long).slice(0,count);
+    return chosen.sort(function(a,b){return b.length-a.length;});
+  }
+
+  function buildGrid(size, words){
+    var grid, tries;
+    for(var attempt=0; attempt<60; attempt++){
+      grid = [];
+      for(var r=0;r<size;r++){ grid.push(new Array(size).fill(null)); }
+      var placed = [];
+      var ok = true;
+      for(var w=0; w<words.length; w++){
+        var word = words[w];
+        var success = false;
+        for(tries=0; tries<200 && !success; tries++){
+          var dir = DIRS[Math.floor(Math.random()*DIRS.length)];
+          var maxR = size, maxC = size;
+          var sr = Math.floor(Math.random()*size);
+          var sc = Math.floor(Math.random()*size);
+          var er = sr + dir[0]*(word.length-1);
+          var ec = sc + dir[1]*(word.length-1);
+          if(er<0||er>=size||ec<0||ec>=size) continue;
+          var fits = true;
+          for(var k=0;k<word.length;k++){
+            var rr = sr+dir[0]*k, cc = sc+dir[1]*k;
+            var existing = grid[rr][cc];
+            if(existing && existing!==word[k]){ fits=false; break; }
+          }
+          if(!fits) continue;
+          for(var k2=0;k2<word.length;k2++){
+            var rr2 = sr+dir[0]*k2, cc2 = sc+dir[1]*k2;
+            grid[rr2][cc2] = word[k2];
+          }
+          placed.push({word:word, sr:sr, sc:sc, dir:dir});
+          success = true;
+        }
+        if(!success){ ok=false; break; }
+      }
+      if(ok){
+        for(var r2=0;r2<size;r2++){
+          for(var c2=0;c2<size;c2++){
+            if(!grid[r2][c2]){
+              grid[r2][c2] = String.fromCharCode(65+Math.floor(Math.random()*26));
+            }
+          }
+        }
+        return { grid:grid, placed:placed };
+      }
+    }
+    // fallback: bump size and retry once
+    return buildGrid(size+1, words);
+  }
+
+  function startLevel(catId, level){
+    var cat = CATEGORIES.find(function(c){ return c.id===catId; });
+    var size = gridSizeForLevel(level);
+    var words = pickWords(cat, level, size);
+    var built = buildGrid(size, words);
+
+    state.catId = catId;
+    state.level = level;
+    state.size = built.grid.length;
+    state.words = built.placed;
+    state.grid = built.grid;
+    state.found = {};
+    state.score = 0;
+    state.hintPenalty = 0;
+    state.startTime = Date.now();
+    clearInterval(state.timerId);
+    state.timerId = setInterval(updateTimer, 500);
+
+    document.getElementById("game-title").textContent = cat.name + " · Board " + level;
+    document.getElementById("meta-score").textContent = "0";
+    document.getElementById("meta-time").textContent = "0:00";
+    renderGrid();
+    renderWordlist();
+    show("screen-game");
+  }
+
+  function renderGrid(){
+    var wrap = document.getElementById("grid");
+    wrap.style.gridTemplateColumns = "repeat("+state.size+", 1fr)";
+    wrap.innerHTML = "";
+    for(var r=0;r<state.size;r++){
+      for(var c=0;c<state.size;c++){
+        var cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.r = r; cell.dataset.c = c;
+        cell.textContent = state.grid[r][c];
+        wrap.appendChild(cell);
+      }
+    }
+    attachSelection(wrap);
+  }
+
+  function renderWordlist(){
+    var wl = document.getElementById("wordlist");
+    wl.innerHTML = "";
+    state.words.forEach(function(w){
+      var chip = document.createElement("span");
+      chip.className = "word-chip"+(state.found[w.word]?" found":"");
+      chip.textContent = w.word;
+      chip.dataset.word = w.word;
+      wl.appendChild(chip);
+    });
+  }
+
+  function updateTimer(){
+    var secs = Math.floor((Date.now()-state.startTime)/1000);
+    var m = Math.floor(secs/60), s = secs%60;
+    document.getElementById("meta-time").textContent = m+":"+(s<10?"0":"")+s;
+  }
+
+  /* ---------------- Selection (mouse + touch) ---------------- */
+  function attachSelection(wrap){
+    var cells = wrap.querySelectorAll(".cell");
+    function cellAt(clientX, clientY){
+      var el = document.elementFromPoint(clientX, clientY);
+      if(el && el.classList.contains("cell")) return el;
+      return null;
+    }
+    function start(x,y){
+      var el = cellAt(x,y);
+      if(!el) return;
+      state.selecting = true;
+      state.selCells = [el];
+      sfxDrag();
+      paintSelection();
+    }
+    function move(x,y){
+      if(!state.selecting) return;
+      var el = cellAt(x,y);
+      if(!el) return;
+      var first = state.selCells[0];
+      var r0=+first.dataset.r, c0=+first.dataset.c;
+      var r1=+el.dataset.r, c1=+el.dataset.c;
+      var dr=r1-r0, dc=c1-c0;
+      var steps = Math.max(Math.abs(dr), Math.abs(dc));
+      var line = [first];
+      if(steps>0){
+        var stepR = dr===0?0:dr/Math.abs(dr);
+        var stepC = dc===0?0:dc/Math.abs(dc);
+        // only allow straight lines (horiz/vert/diag)
+        if(!(dr===0 || dc===0 || Math.abs(dr)===Math.abs(dc))){
+          paintSelection(); return;
+        }
+        line = [];
+        for(var i=0;i<=steps;i++){
+          var rr=r0+stepR*i, cc=c0+stepC*i;
+          var sel = wrap.querySelector('.cell[data-r="'+rr+'"][data-c="'+cc+'"]');
+          if(sel) line.push(sel);
+        }
+      }
+      state.selCells = line;
+      paintSelection();
+    }
+    function end(){
+      if(!state.selecting) return;
+      state.selecting = false;
+      checkSelection();
+      clearSelectionPaint();
+    }
+    function paintSelection(){
+      cells.forEach(function(c){ c.classList.remove("sel"); });
+      state.selCells.forEach(function(c){ c.classList.add("sel"); });
+    }
+    function clearSelectionPaint(){
+      cells.forEach(function(c){ c.classList.remove("sel"); });
+    }
+
+    wrap.onpointerdown = function(e){ e.preventDefault(); start(e.clientX,e.clientY); };
+    wrap.onpointermove = function(e){ if(state.selecting){ e.preventDefault(); move(e.clientX,e.clientY);} };
+    window.onpointerup = function(){ end(); };
+  }
+
+  function checkSelection(){
+    if(state.selCells.length<2) return;
+    var letters = state.selCells.map(function(c){ return c.textContent; }).join("");
+    var reversed = letters.split("").reverse().join("");
+    var match = state.words.find(function(w){ return !state.found[w.word] && (w.word===letters || w.word===reversed); });
+    if(match){
+      state.found[match.word] = true;
+      state.selCells.forEach(function(c){ c.classList.add("found"); });
+      state.score += 10 * match.word.length;
+      sfxFound();
+      document.getElementById("meta-score").textContent = state.score;
+      renderWordlist();
+      if(Object.keys(state.found).length === state.words.length){
+        sfxComplete();
+        setTimeout(completeLevel, 400);
+      }
+    }
+  }
+
+  var toastTimer = null;
+  function showToast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 2600);
+  }
+
+  function revealHint(){
+    var remaining = state.words.filter(function(w){ return !state.found[w.word]; });
+    if(!remaining.length) return;
+    var w = remaining[Math.floor(Math.random()*remaining.length)];
+    var el = document.querySelector('.cell[data-r="'+w.sr+'"][data-c="'+w.sc+'"]');
+    if(el){
+      el.classList.add("hint");
+      setTimeout(function(){ el.classList.remove("hint"); }, 900);
+    }
+  }
+
+  document.getElementById("btn-hint").addEventListener("click", function(){
+    var remaining = state.words.filter(function(w){ return !state.found[w.word]; });
+    if(!remaining.length) return;
+
+    // Game is offline-first; hint specifically needs a connection (to serve the rewarded ad)
+    if(!navigator.onLine){
+      showToast("Hint ke liye internet on karein");
+      return;
+    }
+
+    // Native bridge: the Android app injects window.NativeAds via @JavascriptInterface
+    // (see AdBridge.kt). It shows the real AdMob/Start.io rewarded ad, then calls
+    // window.onRewardedAdComplete() below once the ad finishes.
+    if(window.NativeAds && typeof window.NativeAds.showRewardedAd === "function"){
+      document.getElementById("modal-hint-ad").classList.add("active");
+      window.NativeAds.showRewardedAd();
+      return;
+    }
+
+    // Browser fallback (no native bridge present) — simulated ad wait, for testing in chat.
+    var overlay = document.getElementById("modal-hint-ad");
+    overlay.classList.add("active");
+    setTimeout(function(){
+      overlay.classList.remove("active");
+      revealHint();
+      sfxHint();
+    }, 1800);
+  });
+
+  // Called by the native Android app when the real rewarded ad finishes playing.
+  window.onRewardedAdComplete = function(){
+    document.getElementById("modal-hint-ad").classList.remove("active");
+    revealHint();
+    sfxHint();
+  };
+  // Called by the native app if the rewarded ad fails to load/show (no fill, no network, etc).
+  window.onRewardedAdFailed = function(){
+    document.getElementById("modal-hint-ad").classList.remove("active");
+    showToast("Ad load nahi hua, thodi der me try karein");
+  };
+
+  /* ---------------- Level complete ---------------- */
+  function completeLevel(){
+    clearInterval(state.timerId);
+    var secs = Math.floor((Date.now()-state.startTime)/1000);
+    var m = Math.floor(secs/60), s = secs%60;
+    var timeStr = m+":"+(s<10?"0":"")+s;
+
+    progress.totals.solved += 1;
+    progress.totals.score += state.score;
+    progress[state.catId].stars[state.level] = true;
+    if(state.level+1 > progress[state.catId].unlocked && state.level < LEVEL_COUNT){
+      progress[state.catId].unlocked = state.level+1;
+    }
+    var allDoneThisCat = Object.keys(progress[state.catId].stars).length;
+    progress.totals.streak = allDoneThisCat;
+    progress.totals.bestStreak = Math.max(progress.totals.bestStreak, progress.totals.streak);
+    saveProgress();
+
+    document.getElementById("cm-time").textContent = timeStr;
+    document.getElementById("cm-score").textContent = state.score;
+    document.getElementById("complete-sub").textContent =
+      state.level < LEVEL_COUNT ? "Next board just unlocked." : "That was the last board on this trail — for now.";
+    document.getElementById("btn-next").textContent = state.level < LEVEL_COUNT ? "Continue" : "Back to trails";
+    document.getElementById("modal-complete").classList.add("active");
+  }
+
+  document.getElementById("btn-next").addEventListener("click", function(){
+    document.getElementById("modal-complete").classList.remove("active");
+    goToNextOrHome();
+  });
+  document.getElementById("btn-menu").addEventListener("click", function(){
+    document.getElementById("modal-complete").classList.remove("active");
+    renderHome();
+    show("screen-home");
+  });
+
+  function goToNextOrHome(){
+    if(state.level >= LEVEL_COUNT){
+      renderHome();
+      show("screen-home");
+      return;
+    }
+    // Native bridge: shows the real AdMob/Start.io interstitial, then calls
+    // window.onInterstitialClosed() below once the person dismisses it.
+    if(window.NativeAds && typeof window.NativeAds.showInterstitial === "function"){
+      window.NativeAds.showInterstitial();
+      return;
+    }
+    // Browser fallback — just continue (the modal already showed the placeholder box).
+    startLevel(state.catId, state.level+1);
+  }
+  window.onInterstitialClosed = function(){
+    startLevel(state.catId, state.level+1);
+  };
+  window.onInterstitialFailed = function(){
+    // No fill / offline — never block the player from continuing.
+    startLevel(state.catId, state.level+1);
+  };
+
+  /* ---------------- Nav ---------------- */
+  document.getElementById("btn-back-home").addEventListener("click", function(){
+    renderHome(); show("screen-home");
+  });
+  document.getElementById("btn-back-levels").addEventListener("click", function(){
+    clearInterval(state.timerId);
+    openLevels(state.catId);
+  });
+
+  renderHome();
+  updateSoundIcon();
+  if(window.NativeAds){
+    var slot = document.querySelector(".ad-slot");
+    if(slot) slot.style.display = "none"; // real native banner lives outside the WebView
+  }
+})();
+</script>
+</body>
+</html>
