@@ -24,7 +24,6 @@ import com.startapp.sdk.adsbase.Ad
 
 class MainActivity : AppCompatActivity() {
 
-    // ---- AdMob (real IDs) ----
     private val BANNER_AD_UNIT_ID = "ca-app-pub-1493112125477027/5623281128"
     private val INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-1493112125477027/5240137746"
     private val REWARDED_AD_UNIT_ID = "ca-app-pub-1493112125477027/7100014325"
@@ -32,7 +31,6 @@ class MainActivity : AppCompatActivity() {
     private val NATIVE_AD_UNIT_ID = "ca-app-pub-1493112125477027/8667237701"
     private val APP_OPEN_AD_UNIT_ID = "ca-app-pub-1493112125477027/5849502679"
 
-    // ---- Start.io (real App ID) ----
     private val START_IO_APP_ID = "208872776"
 
     private lateinit var webView: WebView
@@ -183,10 +181,7 @@ class MainActivity : AppCompatActivity() {
         val startAd = StartAppAd(this)
         startAd.loadAd(StartAppAd.AdMode.AUTOMATIC, object : AdEventListener {
             override fun onReceiveAd(ad: Ad) {
-                startAd.showAd(object : AdEventListener {
-                    override fun onReceiveAd(ad: Ad) {}
-                    override fun onFailedToReceiveAd(ad: Ad?) { notifyJs("onInterstitialClosed") }
-                })
+                startAd.showAd()
                 notifyJs("onInterstitialClosed")
             }
             override fun onFailedToReceiveAd(ad: Ad?) {
