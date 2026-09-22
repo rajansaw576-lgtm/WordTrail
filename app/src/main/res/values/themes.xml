@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.WordTrail" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">#0B2027</item>
+        <item name="android:statusBarColor">#0B2027</item>
+        <item name="android:navigationBarColor">#0B2027</item>
+    </style>
+</resources>
